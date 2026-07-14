@@ -1,8 +1,7 @@
 """
 data_prep.py
-Loads the credit card transaction dataset and performs initial
-exploratory data analysis (EDA) to understand the class imbalance
-and feature distributions before modeling.
+Loads the credit card transaction dataset, explores it, preprocesses it,
+and trains a baseline Logistic Regression model to detect fraud.
 """
 
 import pandas as pd
@@ -10,6 +9,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, confusion_matrix
 
 # ---------------------------------------------------------
 # 1. Load the dataset
@@ -33,12 +34,11 @@ def basic_info(df):
 
 
 # ---------------------------------------------------------
-# 3. Class distribution (the key challenge: imbalance)
+# 3. Class distribution
 # ---------------------------------------------------------
 def class_distribution(df):
     counts = df["Class"].value_counts()
     percentages = df["Class"].value_counts(normalize=True) * 100
-
     print("\n--- Class distribution ---")
     print(f"Legit (0): {counts[0]}  ({percentages[0]:.3f}%)")
     print(f"Fraud (1): {counts[1]}  ({percentages[1]:.3f}%)")
@@ -104,6 +104,45 @@ def preprocess_data(df):
 
 
 # ---------------------------------------------------------
+# 7. Train a baseline Logistic Regression model
+# ---------------------------------------------------------
+def train_logistic_regression(X_train, y_train):
+    model = LogisticRegression(
+        class_weight="balanced",  # gives more importance to the rare fraud class
+        max_iter=1000,            # allows more iterations to properly converge
+        random_state=42
+    )
+    model.fit(X_train, y_train)
+    print("\n--- Logistic Regression trained ---")
+    return model
+
+
+# ---------------------------------------------------------
+# 8. Evaluate the model
+# ---------------------------------------------------------
+def evaluate_model(model, X_test, y_test):
+    y_pred = model.predict(X_test)
+
+    print("\n--- Classification Report ---")
+    print(classification_report(y_test, y_pred, target_names=["Legit", "Fraud"]))
+
+    print("--- Confusion Matrix ---")
+    cm = confusion_matrix(y_test, y_pred)
+    print(cm)
+
+    # Visualize confusion matrix
+    plt.figure(figsize=(5, 4))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
+                xticklabels=["Legit", "Fraud"], yticklabels=["Legit", "Fraud"])
+    plt.title("Confusion Matrix - Logistic Regression")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.savefig("confusion_matrix_logreg.png")
+    plt.close()
+    print("Saved confusion_matrix_logreg.png")
+
+
+# ---------------------------------------------------------
 # Run everything
 # ---------------------------------------------------------
 if __name__ == "__main__":
@@ -113,3 +152,5 @@ if __name__ == "__main__":
     plot_class_distribution(df)
     plot_amount_comparison(df)
     X_train, X_test, y_train, y_test = preprocess_data(df)
+    model = train_logistic_regression(X_train, y_train)
+    evaluate_model(model, X_test, y_test)
