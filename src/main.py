@@ -1,7 +1,8 @@
 """
-data_prep.py
+main.py
 Loads the credit card transaction dataset, explores it, preprocesses it,
-and trains a baseline Logistic Regression model to detect fraud.
+and trains/evaluates two models (Logistic Regression and Random Forest)
+to detect fraud.
 """
 
 import pandas as pd
@@ -10,6 +11,7 @@ import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 
 # ---------------------------------------------------------
@@ -104,12 +106,12 @@ def preprocess_data(df):
 
 
 # ---------------------------------------------------------
-# 7. Train a baseline Logistic Regression model
+# 7a. Train a baseline Logistic Regression model
 # ---------------------------------------------------------
 def train_logistic_regression(X_train, y_train):
     model = LogisticRegression(
-        class_weight="balanced",  # gives more importance to the rare fraud class
-        max_iter=1000,            # allows more iterations to properly converge
+        class_weight="balanced",
+        max_iter=1000,
         random_state=42
     )
     model.fit(X_train, y_train)
@@ -118,28 +120,43 @@ def train_logistic_regression(X_train, y_train):
 
 
 # ---------------------------------------------------------
-# 8. Evaluate the model
+# 7b. Train a Random Forest model
 # ---------------------------------------------------------
-def evaluate_model(model, X_test, y_test):
+def train_random_forest(X_train, y_train):
+    model = RandomForestClassifier(
+        n_estimators=100,
+        class_weight="balanced",
+        random_state=42,
+        n_jobs=-1
+    )
+    model.fit(X_train, y_train)
+    print("\n--- Random Forest trained ---")
+    return model
+
+
+# ---------------------------------------------------------
+# 8. Evaluate a model
+# ---------------------------------------------------------
+def evaluate_model(model, X_test, y_test, model_name="model"):
     y_pred = model.predict(X_test)
 
-    print("\n--- Classification Report ---")
+    print(f"\n--- Classification Report ({model_name}) ---")
     print(classification_report(y_test, y_pred, target_names=["Legit", "Fraud"]))
 
-    print("--- Confusion Matrix ---")
+    print(f"--- Confusion Matrix ({model_name}) ---")
     cm = confusion_matrix(y_test, y_pred)
     print(cm)
 
-    # Visualize confusion matrix
     plt.figure(figsize=(5, 4))
     sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
                 xticklabels=["Legit", "Fraud"], yticklabels=["Legit", "Fraud"])
-    plt.title("Confusion Matrix - Logistic Regression")
+    plt.title(f"Confusion Matrix - {model_name}")
     plt.xlabel("Predicted")
     plt.ylabel("Actual")
-    plt.savefig("confusion_matrix_logreg.png")
+    filename = f"confusion_matrix_{model_name.lower().replace(' ', '_')}.png"
+    plt.savefig(filename)
     plt.close()
-    print("Saved confusion_matrix_logreg.png")
+    print(f"Saved {filename}")
 
 
 # ---------------------------------------------------------
@@ -152,5 +169,11 @@ if __name__ == "__main__":
     plot_class_distribution(df)
     plot_amount_comparison(df)
     X_train, X_test, y_train, y_test = preprocess_data(df)
-    model = train_logistic_regression(X_train, y_train)
-    evaluate_model(model, X_test, y_test)
+
+    # Logistic Regression
+    logreg_model = train_logistic_regression(X_train, y_train)
+    evaluate_model(logreg_model, X_test, y_test, model_name="Logistic Regression")
+
+    # Random Forest
+    rf_model = train_random_forest(X_train, y_train)
+    evaluate_model(rf_model, X_test, y_test, model_name="Random Forest")
