@@ -1,8 +1,8 @@
 """
 main.py
 Loads the credit card transaction dataset, explores it, preprocesses it,
-and trains/evaluates two models (Logistic Regression and Random Forest)
-to detect fraud.
+and trains/evaluates three models (Logistic Regression, Random Forest,
+and XGBoost) to detect fraud.
 """
 
 import pandas as pd
@@ -12,6 +12,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 
 # ---------------------------------------------------------
@@ -135,6 +136,26 @@ def train_random_forest(X_train, y_train):
 
 
 # ---------------------------------------------------------
+# 7c. Train an XGBoost model
+# ---------------------------------------------------------
+def train_xgboost(X_train, y_train):
+    # scale_pos_weight tells XGBoost how imbalanced the classes are
+    # (roughly: count of legit / count of fraud)
+    fraud_ratio = (y_train == 0).sum() / (y_train == 1).sum()
+
+    model = XGBClassifier(
+        n_estimators=100,
+        scale_pos_weight=fraud_ratio,
+        eval_metric="logloss",
+        random_state=42,
+        n_jobs=-1
+    )
+    model.fit(X_train, y_train)
+    print("\n--- XGBoost trained ---")
+    return model
+
+
+# ---------------------------------------------------------
 # 8. Evaluate a model
 # ---------------------------------------------------------
 def evaluate_model(model, X_test, y_test, model_name="model"):
@@ -177,3 +198,7 @@ if __name__ == "__main__":
     # Random Forest
     rf_model = train_random_forest(X_train, y_train)
     evaluate_model(rf_model, X_test, y_test, model_name="Random Forest")
+
+    # XGBoost
+    xgb_model = train_xgboost(X_train, y_train)
+    evaluate_model(xgb_model, X_test, y_test, model_name="XGBoost")
